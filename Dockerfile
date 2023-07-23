@@ -1,18 +1,30 @@
-FROM python:3.11.4
+# Use a imagem base python:3.11-alpine
+FROM python:3.11-alpine
 
-WORKDIR /usr/src/app
-
+# Defina as variáveis de ambiente
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONFAULTHANDLER 1
 ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWEITEBYTECODE 1
 
-# install psycopg dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Instale as dependências necessárias para compilar dependências Python
+RUN apk update && apk add --no-cache \
+    # Required for installing/upgrading psycopg2 (PostgreSQL client) and Pillow (image library):
+    gcc python3-dev musl-dev \
+    # Required for installing/upgrading psycopg2:
+    postgresql-libs postgresql-dev
 
-RUN pip install --upgrade pip pipenv flake8
-COPY Pipfile* ./
-RUN pipenv install --system --ignore-pipfile
+# Crie o diretório de trabalho
+RUN mkdir /code
+WORKDIR /code
 
-COPY . .
+# Instale o utilitário pipenv
+RUN pip install --upgrade pipenv
+
+# Copie os arquivos Pipfile e Pipfile.lock para o diretório de trabalho do contêiner
+COPY Pipfile Pipfile.lock /code/
+
+# Instale as dependências usando o Pipenv
+RUN pipenv install --deploy --system
+
+# Copie o código do projeto para o diretório de trabalho do contêiner
+COPY . /code/
